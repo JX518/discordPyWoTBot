@@ -9,6 +9,14 @@ from discord.player import FFmpegAudio
 import requests
 import datetime
 
+class WoT:
+    def getPlayers(search: str) -> dict:
+        URL = "https://api.worldoftanks.com/wot/account/list/?application_id=a5c99768df871fa42a0b10a16e8e89ca&search=" + search +"&type=startswith"
+        data = requests.get(url = URL, params = None).json()
+        return data
+
+    
+
 class MyClient(discord.Client):
 
     #Starts the bot and outputs ready.
