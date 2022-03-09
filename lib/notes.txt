@@ -1,0 +1,8 @@
+Use this video to set up Python in VS:
+https://www.youtube.com/watch?v=Uibz0iQjoC0&t=501s
+
+Also look at this when installing discord.py:
+https://pypi.org/project/discord.py/
+
+The documentation for discord.py is here:
+https://discordpy.readthedocs.io/en/latest/index.html
