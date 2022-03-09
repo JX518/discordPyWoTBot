@@ -2,6 +2,8 @@
 # from re import search
 # from this import d
 # from aiohttp import client
+from dataclasses import dataclass
+from email.mime import image
 from turtle import color
 import discord
 # from discord import activity
@@ -82,24 +84,32 @@ class MyClient(discord.Client):
                     await message.channel.send(embed = msg)
                     return
                 
-                data = MyClient.wot.getPlayers(arr[1])
+                data = MyClient.wot.getPlayers(test)
                 try:
-                    ID = MyClient.wot.getID(arr[1])
+                    ID = MyClient.wot.getID(test)
                 except: 
                     pass
 
                 try: 
                     type(ID)
                 except UnboundLocalError:
-                    await message.channel.send("No player with the username " + arr[1])
+                    msg = discord.Embed(title = "No player with the username " + test, color = 0x00aa00)
+                    await message.channel.send(embed = msg)
                     return
 
-                URL = "https://api.worldoftanks.com/wot/account/info/?application_id=a5c99768df871fa42a0b10a16e8e89ca&account_id=" + str(ID)
-                data = requests.get(url = URL, params = None).json()
-                tmp = data['data'][str(ID)]
+                strID = str(ID)
+                data = MyClient.wot.getPlayerStats(account_id = strID)
+                try:
+                    tmp = data['data'][strID]
+                except KeyError:
+                    msg = discord.Embed(title = "No player with the username " + test)
+                    await message.channel.send(embed = msg)
                 sendStr = "\nLast Battle Time: " + str(datetime.datetime.fromtimestamp(tmp['last_battle_time'])) + "\nCreated At: " + str(datetime.datetime.fromtimestamp(tmp['created_at'])) + "\nUpdated At: " + str(datetime.datetime.fromtimestamp(tmp['updated_at'])) + "\nLast Logged Out At: " + str(datetime.datetime.fromtimestamp(tmp['logout_at']))
-                await message.channel.send(sendStr)   
-                print(data['data'][str(ID)]['statistics']['all'])
+                username = data['data'][strID]['nickname']
+                msg = discord.Embed(title = username, description = sendStr, color = 0x00aa00, url = "https://wotlabs.net/na/player/" + username)
+                msg.set_image(url = "http://wotlabs.net/sig_dark/na/JX518/signature.png")
+                await message.channel.send(embed = msg)
+                print(data['data'][strID]['statistics']['all'])
                 #todo: get stas from data['data'][str(ID)]['statistics']['all']
 
 client = MyClient() 
