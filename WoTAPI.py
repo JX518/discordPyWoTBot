@@ -159,8 +159,26 @@ class WoTAPI:
         if(extra != None):
             URL = URL + "&extra=" + extra
         
-        print(URL)
         return requests.get(url = URL).json()
 
-    # def serverData() -> dict: 
-# https://api.worldoftanks.com/wgn/servers/info/?application_id=a5c99768df871fa42a0b10a16e8e89ca&game=wot
+    def getTankStats(self, account_id: str, access_token: str = None, 
+    fields: str = None, lang: str = None, tank_id: str = None) -> dict:
+        """
+        reference getPlayerStats and getPlayers functions
+        """
+        URL = "https://api.worldoftanks.com/wot/account/tanks/?application_id=" + self.AppID + "&account_id=" + account_id    
+        if fields != None:  
+            URL = URL + "&fields=" + fields
+        if(lang != None):
+            URL = URL + "&language=" + lang
+        if(access_token != None):
+            URL = URL + "&access_token=" + access_token
+        if(tank_id != None):
+            URL = URL + "&tank_id=" + tank_id
+            
+        return(requests.get(url=URL).json())
+        
+    def tankFromID(self, TankID: str) -> str:
+        URL = "https://api.worldoftanks.com/wot/encyclopedia/vehicles/?application_id=" + self.AppID + " &tank_id=" + TankID
+        return(requests.get(url=URL).json()['data'][TankID]['short_name'])
+        
