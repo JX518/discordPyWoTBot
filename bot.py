@@ -1,84 +1,76 @@
-from collections import deque
-from re import search
-from this import d
-from aiohttp import client
+# from collections import deque
+# from re import search
+# from this import d
+# from aiohttp import client
+from turtle import color
 import discord
-from discord import activity
-from discord.ext.commands.core import command
-from discord.player import FFmpegAudio
+# from discord import activity
+# from discord.ext.commands.core import command
+# from discord.player import FFmpegAudio
 import requests
 import datetime
-
-class WoT:
-    def getPlayers(search: str) -> dict:
-        URL = "https://api.worldoftanks.com/wot/account/list/?application_id=a5c99768df871fa42a0b10a16e8e89ca&search=" + search +"&type=startswith"
-        data = requests.get(url = URL, params = None).json()
-        return data
-
-    
+from WoTAPI import WoTAPI as WoT
 
 class MyClient(discord.Client):
+    wot:WoT = None
 
     #Starts the bot and outputs ready.
     async def on_ready(self):
-        print('Logged on as', self.user)  
+        print('Logged on as', self.user) 
+        #create a global WoT API variable
+        MyClient.wot:WoT = WoT("a5c99768df871fa42a0b10a16e8e89ca")
 
     #detects messages from other authors
     async def on_message(self, message):
         #spam bot mode
+        
         """if message.author == self.user:
             await message.channel.send('@everyone')"""
-        #Commands only specific to JX (dev)
-        if 267998423611998210 == message.author.id and isinstance(message.channel, discord.channel.DMChannel):
-            arr = message.content.split(" ")
-            
-            if arr[0] == "-msgChannel" and len(arr) > 2:
-                msgArr = message.content.split(" ", 2) 
-                channelID = int(msgArr[1])
-                #print("ChannelID:", channelID, type(channelID))
-                channel = client.get_channel(channelID)
-                await channel.send(msgArr[2])
 
         #don't respond to ourselves  
-        if  message.author == self:
-            return 
+        if  message.author == self.user:
+            return
 
         #Tests if the bot works properly
         if message.content == 'test':
-            await message.channel.send('true') 
+            msg = discord.Embed(title = "title", description = "description a\nb cd", color = 0xff0000)
+            await message.channel.send(embed = msg) 
 
         #If the message begins with the command prefix, it checks if the message is a command.
-        if message.content[0] == "-": 
+        if message.content != "" and message.content[0] == "-": 
             #string[start:end:step]
-
             if(message.content[1:7].lower() == "search"):
                 arr = message.content.split(" ")
-                
                 try:
                     search = arr[1]
                 except IndexError:
                     if(len(message.content) == 7):
-                        await message.channel.send("-search [partOfUsername]")
+                        msg = discord.Embed(title = "Syntax Error", description = "-search [partOfUsername]", color = 0xff0000)
+                        await message.channel.send(embed = msg)
                         return
-                
-                URL = "https://api.worldoftanks.com/wot/account/list/?application_id=a5c99768df871fa42a0b10a16e8e89ca&search=" + arr[1] +"&type=startswith"
-                data = requests.get(url = URL, params = None).json()
+                        
+                data = MyClient.wot.getPlayers(arr[1])
                 
                 try:
+                    players:str = ""
                     if(data['meta']['count'] == 100):
                         output = str(data['meta']['count']) + "+ results found"
                     else:
                         output = str(data['meta']['count']) + " results found"
+                        msg = discord.Embed(title = output, color = 0x00aa00)
                     for player in data['data']:
-                        output = output + "\n" + player['nickname']
-                    await message.channel.send(output)
+                        players = players + "\n" + player['nickname']
+                        msg = discord.Embed(title = output, description = players, color = 0x00aa00)
+                    await message.channel.send(embed = msg)
                 #if there is no data[meta][count] this error will generate 
                 # because there are too many or too little players
                 except KeyError:
                     if(data['error']['message'] == 'NOT_ENOUGH_SEARCH_LENGTH'):
-                        await message.channel.send("Searches must have a minimum of 3 characters")
-                    if(data['error']['message'] == 'INVALID_SEARCH'):   
-                        await message.channel.send("0 results found") 
+                        msg = discord.Embed(title = "Search Length Error", description = "Searches must have a minimum of 3 characters", color = 0xff0000)
+                        await message.channel.send(embed = msg)
+                    if(data['error']['message'] == 'INVALID_SEARCH'):                          
+                        msg = discord.Embed(title = "0 results found", color = 0x00aa00)
+                        await message.channel.send(embed = msg)
                     return   
 
             if(message.content[1:6].lower() == "stats"):
@@ -86,21 +78,15 @@ class MyClient(discord.Client):
                 try:
                     test = arr[1]
                 except IndexError:
-                    await message.channel.send("-stats [username]")
+                    msg = discord.Embed(title = "Syntax Error", description = "-stats [FullUsername]", color = 0xff0000)
+                    await message.channel.send(embed = msg)
                     return
-                URL = "https://api.worldoftanks.com/wot/account/list/?application_id=a5c99768df871fa42a0b10a16e8e89ca&search=" + arr[1] +"&type=startswith"
-                data = requests.get(url = URL, params = None).json()
+                
+                data = MyClient.wot.getPlayers(arr[1])
                 try:
-                    for player in data['data']:
-                        if(player['nickname'].lower() == arr[1].lower()):
-                            ID = player['account_id']
-                            break
-                except KeyError:
-                    if(len(arr[1]) < 3):
-                        await message.channel.send(arr[1] + "is too short")
-                    else:
-                        await message.channel.send("No player with the username " + arr[1])
-                    return
+                    ID = MyClient.wot.getID(arr[1])
+                except: 
+                    pass
 
                 try: 
                     type(ID)
