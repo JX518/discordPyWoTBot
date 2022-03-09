@@ -4,6 +4,7 @@
 # from aiohttp import client
 from dataclasses import dataclass
 from email.mime import image
+from tkinter import font
 from turtle import color
 import discord
 # from discord import activity
@@ -12,6 +13,21 @@ import discord
 import requests
 import datetime
 from WoTAPI import WoTAPI as WoT
+
+class methods:
+    def mostPlayedTanks(tankStats:dict) -> dict:
+        notInOrder = True
+        while(notInOrder):
+            for i in range(len(tankStats)-1):
+                notInOrder = False
+                if(tankStats[i]['statistics']['battles'] < tankStats[i+1]['statistics']['battles']):
+                    tmp = tankStats[i]
+                    tankStats[i] = tankStats[i + 1]
+                    tankStats[i + 1] = tmp
+                    notInOrder = True
+        return tankStats
+            
+
 
 class MyClient(discord.Client):
     wot:WoT = None
@@ -62,7 +78,12 @@ class MyClient(discord.Client):
                         msg = discord.Embed(title = output, color = 0x00aa00)
                     for player in data['data']:
                         players = players + "\n" + player['nickname']
-                        msg = discord.Embed(title = output, description = players, color = 0x00aa00)
+                    playersArr = players.split("_")
+                    players = playersArr[0]
+                    for i in range(1,len(playersArr)):
+                        players = players + "\_" + playersArr[i]
+
+                    msg = discord.Embed(title = output, description = players, color = 0x00aa00)
                     await message.channel.send(embed = msg)
                 #if there is no data[meta][count] this error will generate 
                 # because there are too many or too little players
@@ -102,16 +123,40 @@ class MyClient(discord.Client):
                 try:
                     tmp = data['data'][strID]
                 except KeyError:
-                    msg = discord.Embed(title = "No player with the username " + test)
+                    usernameArr = test.split("_")
+                    test = usernameArr[0]
+                    for i in range(1,len(usernameArr)):
+                        test = test + "\_" + usernameArr[i]
+                    msg = discord.Embed(title = "No player with the username " + test, color=0xff0000)
                     await message.channel.send(embed = msg)
-                sendStr = "\nLast Battle Time: " + str(datetime.datetime.fromtimestamp(tmp['last_battle_time'])) + "\nCreated At: " + str(datetime.datetime.fromtimestamp(tmp['created_at'])) + "\nUpdated At: " + str(datetime.datetime.fromtimestamp(tmp['updated_at'])) + "\nLast Logged Out At: " + str(datetime.datetime.fromtimestamp(tmp['logout_at']))
-                username = data['data'][strID]['nickname']
-                msg = discord.Embed(title = username, description = sendStr, color = 0x00aa00, url = "https://wotlabs.net/na/player/" + username)
-                msg.set_image(url = "http://wotlabs.net/sig_dark/na/JX518/signature.png")
+                # sendStr = "\nLast Battle Time: " + str(datetime.datetime.fromtimestamp(tmp['last_battle_time'])) + "\nCreated At: " + str(datetime.datetime.fromtimestamp(tmp['created_at'])) + "\nUpdated At: " + str(datetime.datetime.fromtimestamp(tmp['updated_at'])) + "\nLast Logged Out At: " + str(datetime.datetime.fromtimestamp(tmp['logout_at'])) + "\n\n"
+                try:
+                    username = data['data'][strID]['nickname']
+                except KeyError:
+                    msg = discord.Embed(title = "No player with the username " + test, color=0xff0000)
+                    await message.channel.send(embed = msg)
+                    return
+                battles = data['data'][strID]['statistics']['all']['battles']
+                data = MyClient.wot.getTankStats(account_id = strID)
+                tanks = methods.mostPlayedTanks(data['data'][strID])
+                sendStr = "Top Most Played Tanks (" + str(battles) + " Battles Total): \n"
+                sendStr = sendStr + MyClient.wot.tankFromID(str(tanks[0]['tank_id'])) + " --- (" + str(tanks[0]['statistics']['battles']) + " battles, " + "{:.2f}".format(100*(tanks[1]['statistics']['wins']/tanks[1]['statistics']['battles'])) + "% winrate)" + "\n" 
+                try:
+                    sendStr = sendStr + MyClient.wot.tankFromID(str(tanks[1]['tank_id'])) + " --- (" + str(tanks[1]['statistics']['battles']) +  " battles, " + "{:.2f}".format(100*(tanks[1]['statistics']['wins']/tanks[1]['statistics']['battles'])) + "% winrate)" + "\n" 
+                except:
+                    sendStr = sendStr+"n/a\n"
+                try: 
+                    sendStr = sendStr + MyClient.wot.tankFromID(str(tanks[2]['tank_id'])) + " --- (" + str(tanks[2]['statistics']['battles']) + " battles, " + "{:.2f}".format(100*(tanks[2]['statistics']['wins']/tanks[2]['statistics']['battles'])) + "% winrate)" 
+                except:
+                    sendStr = sendStr+"n/a\n"
+                usernameArr = username.split("_")
+                username1 = usernameArr[0]
+                for i in range(1,len(usernameArr)):
+                    username1 = username1 + "\_" + usernameArr[i]
+                msg = discord.Embed(title = username1, description = sendStr, color = 0x00aa00, url = "https://wotlabs.net/na/player/" + username)
+                msg.set_image(url = "http://wotlabs.net/sig_dark/na/"+username+"/signature.png")
                 await message.channel.send(embed = msg)
-                print(data['data'][strID]['statistics']['all'])
-                #todo: get stas from data['data'][str(ID)]['statistics']['all']
-
+                
 client = MyClient() 
 #this client.run('token')
 client.run('ODI2MjU3MTAwMzU0NDg2MzAz.YGJ14w._QdDCVnpyV8y_y0yiWeuCt1SJek') 
