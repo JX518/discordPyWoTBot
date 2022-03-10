@@ -1,36 +1,45 @@
-# from collections import deque
-# from re import search
-# from this import d
-# from aiohttp import client
+from cmath import e
+from collections import deque
+import threading
+from re import search
+from this import d
+from aiohttp import client
 from dataclasses import dataclass
-from email.mime import image
-from tkinter import font
-from turtle import color
 import discord
-# from discord import activity
-# from discord.ext.commands.core import command
-# from discord.player import FFmpegAudio
+from discord import activity
+from discord.errors import ClientException
+# import youtube_dl (youtube_dl is outdated)
+import yt_dlp as youtube_dl
+from discord.ext.commands.core import command
+from discord.player import FFmpegAudio
 import requests
 import datetime
 from WoTAPI import WoTAPI as WoT
+import os
+import time
 
 class methods:
     def mostPlayedTanks(tankStats:dict) -> dict:
         notInOrder = True
-        while(notInOrder):
-            for i in range(len(tankStats)-1):
-                notInOrder = False
-                if(tankStats[i]['statistics']['battles'] < tankStats[i+1]['statistics']['battles']):
-                    tmp = tankStats[i]
-                    tankStats[i] = tankStats[i + 1]
-                    tankStats[i + 1] = tmp
-                    notInOrder = True
+        if(len(tankStats)>2):
+            while(notInOrder):
+                for i in range(len(tankStats)-1):
+                    notInOrder = False
+                    if(tankStats[i]['statistics']['battles'] < tankStats[i+1]['statistics']['battles']):
+                        tmp = tankStats[i]
+                        tankStats[i] = tankStats[i + 1]
+                        tankStats[i + 1] = tmp
+                        notInOrder = True
+        if(len(tankStats)==2):
+            if(tankStats[1]['statistics']['battles'] < tankStats[2]['statistics']['battles']):
+                        tmp = tankStats[i]
+                        tankStats[i] = tankStats[i + 1]
+                        tankStats[i + 1] = tmp
         return tankStats
-            
-
 
 class MyClient(discord.Client):
     wot:WoT = None
+    music_queue = {}
 
     #Starts the bot and outputs ready.
     async def on_ready(self):
@@ -98,6 +107,7 @@ class MyClient(discord.Client):
 
             if(message.content[1:6].lower() == "stats"):
                 arr = message.content.split(" ")
+                
                 try:
                     test = arr[1]
                 except IndexError:
@@ -106,41 +116,49 @@ class MyClient(discord.Client):
                     return
                 
                 data = MyClient.wot.getPlayers(test)
-                try:
-                    ID = MyClient.wot.getID(test)
-                except: 
-                    pass
+                if(len(test) < 3):
+                    msg = discord.Embed(title = "No player with the username " + test, color = 0x00aa00)
+                    await message.channel.send(embed = msg)
+                    return
+                ID = MyClient.wot.getID(test)
 
-                try: 
-                    type(ID)
-                except UnboundLocalError:
+                
+                print (ID)
+                
+                if(ID == None):
+                    print("none")
                     msg = discord.Embed(title = "No player with the username " + test, color = 0x00aa00)
                     await message.channel.send(embed = msg)
                     return
 
                 strID = str(ID)
                 data = MyClient.wot.getPlayerStats(account_id = strID)
-                try:
-                    tmp = data['data'][strID]
-                except KeyError:
-                    usernameArr = test.split("_")
-                    test = usernameArr[0]
-                    for i in range(1,len(usernameArr)):
-                        test = test + "\_" + usernameArr[i]
-                    msg = discord.Embed(title = "No player with the username " + test, color=0xff0000)
-                    await message.channel.send(embed = msg)
+                # try:
+                tmp = data['data'][strID]
+                # except KeyError:
+                #     usernameArr = test.split("_")
+                #     test = usernameArr[0]
+                #     for i in range(1,len(usernameArr)):
+                #         test = test + "\_" + usernameArr[i]
+                #     msg = discord.Embed(title = "No player with the username " + test, color=0xff0000)
+                #     await message.channel.send(embed = msg)
                 # sendStr = "\nLast Battle Time: " + str(datetime.datetime.fromtimestamp(tmp['last_battle_time'])) + "\nCreated At: " + str(datetime.datetime.fromtimestamp(tmp['created_at'])) + "\nUpdated At: " + str(datetime.datetime.fromtimestamp(tmp['updated_at'])) + "\nLast Logged Out At: " + str(datetime.datetime.fromtimestamp(tmp['logout_at'])) + "\n\n"
-                try:
-                    username = data['data'][strID]['nickname']
-                except KeyError:
-                    msg = discord.Embed(title = "No player with the username " + test, color=0xff0000)
-                    await message.channel.send(embed = msg)
-                    return
-                battles = data['data'][strID]['statistics']['all']['battles']
+                
+                # try:
+                username = data['data'][strID]['nickname']
+                # except KeyError:
+                #     msg = discord.Embed(title = "No player with the username " + test, color=0xff0000)
+                #     await message.channel.send(embed = msg)
+                #     return
+                
+                battles = tmp['statistics']['all']['battles']
                 data = MyClient.wot.getTankStats(account_id = strID)
                 tanks = methods.mostPlayedTanks(data['data'][strID])
                 sendStr = "Top Most Played Tanks (" + str(battles) + " Battles Total): \n"
-                sendStr = sendStr + MyClient.wot.tankFromID(str(tanks[0]['tank_id'])) + " --- (" + str(tanks[0]['statistics']['battles']) + " battles, " + "{:.2f}".format(100*(tanks[1]['statistics']['wins']/tanks[1]['statistics']['battles'])) + "% winrate)" + "\n" 
+                try:
+                    sendStr = sendStr + MyClient.wot.tankFromID(str(tanks[0]['tank_id'])) + " --- (" + str(tanks[0]['statistics']['battles']) + " battles, " + "{:.2f}".format(100*(tanks[1]['statistics']['wins']/tanks[1]['statistics']['battles'])) + "% winrate)" + "\n" 
+                except:
+                    sendStr = sendStr+"n/a\n"
                 try:
                     sendStr = sendStr + MyClient.wot.tankFromID(str(tanks[1]['tank_id'])) + " --- (" + str(tanks[1]['statistics']['battles']) +  " battles, " + "{:.2f}".format(100*(tanks[1]['statistics']['wins']/tanks[1]['statistics']['battles'])) + "% winrate)" + "\n" 
                 except:
@@ -156,6 +174,43 @@ class MyClient(discord.Client):
                 msg = discord.Embed(title = username1, description = sendStr, color = 0x00aa00, url = "https://wotlabs.net/na/player/" + username)
                 msg.set_image(url = "http://wotlabs.net/sig_dark/na/"+username+"/signature.png")
                 await message.channel.send(embed = msg)
+
+            if(message.content[1:5].lower() == "play"): 
+                voiceChannel=message.author.voice.channel
+                voice = discord.utils.get(client.voice_clients, guild=message.guild)
+                if voice == None or not voice.is_connected():
+                    await voiceChannel.connect() 
+                    voice = discord.utils.get(client.voice_clients, guild=message.guild)
+                
+                arr = message.content.split(" ")
+                url = arr[1]
+                
+                try:
+                    if os.path.isfile("song.mp3"):
+                        os.remove("song.mp3")
+                except PermissionError:
+                    print("no permissions")
+                    message.channel.send("The bot host is an idiot and forgot to give the bot permissions to change the song")
+                    
+                ydl_opts = {
+                    'format':'bestaudio/best',
+                    'postprocessors':[{
+                        'key':'FFmpegExtractAudio',
+                        'preferredcodec':'mp3',
+                        'preferredquality':'192',
+                    }],
+                }
+                
+                message.channel.send("downloading...")
+                
+                with youtube_dl.YoutubeDL(ydl_opts) as ydl: 
+                    ydl.download([url])
+                    
+                    for file in os.listdir("./"):
+                        if file.endswith(".mp3"):
+                            os.rename(file, "song.mp3")  
+                            voice.play(discord.FFmpegPCMAudio("song.mp3")) 
+                            break 
                 
 client = MyClient() 
 #this client.run('token')
