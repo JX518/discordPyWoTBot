@@ -14,7 +14,7 @@ class WoTAPI:
             print("You set your Application ID as " + AppID)
             self.AppID:str = AppID
             URL = "https://api.worldoftanks.com/wot/account/list/?application_id="+ AppID +"&search=jx5181"
-            data = requests.get(url = URL, params = None).json()
+            data = requests.get(url = URL).json()
             if(data['status'] == "error" and data['status']['error']['field'] == "application_id"):
                 raise Exception("Invalid ApplicationID")
 
