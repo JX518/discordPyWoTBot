@@ -1,12 +1,18 @@
+from ast import If
 from cmath import e
 from collections import deque
+from ctypes import Array
 import threading
 from re import search
 from this import d
+
+from numpy import array
 from aiohttp import client
 from dataclasses import dataclass
 import discord
 from discord import activity
+from discord.channel import VoiceChannel
+from discord.embeds import Embed
 from discord.errors import ClientException
 # import youtube_dl (youtube_dl is outdated)
 import yt_dlp as youtube_dl
@@ -19,6 +25,59 @@ import os
 import time
 
 class methods:
+    '''
+    music_queue
+        [
+            (song)[
+                embed
+                songFileName
+            ]
+        ]
+    '''
+    
+    def play(music_queue: Array, voiceChannel: VoiceChannel, voice):
+        if(len(music_queue)>0):
+            music_queue[0]
+    
+    #creates the video URL 
+    def getVideo(search: str) -> dict:
+        if("https://youtu.be/" in search or "https://www.youtube.com/watch?v=" in search):
+            url = search
+        else:
+            YTAPIKey:str = "AIzaSyDC_3dXyozYOdY9_d7e6y3UJPUhPFExvXs"
+            Video = "https://youtube.googleapis.com/youtube/v3/search?part=snippet&order=relevance&q="+ search +"&safeSearch=none&key=" + YTAPIKey
+            VidData = requests.get(url = Video).json()
+            VID = VidData['items'][0]['id']['videoId']
+            url = "https://www.youtube.com/watch?v=" + VID
+        
+        #creates the video embed
+        videoName = VidData['items'][0]['snippet']['title']
+        emb = Embed(title = "Playing: ", description = videoName, color=0x00aa00, url = url)
+        emb.set_thumbnail(url = VidData['items'][0]['snippet']['thumbnails']['default']['url'])
+        
+        ydl_opts = {
+                        'format':'bestaudio/best',
+                        'postprocessors':[{
+                            'key':'FFmpegExtractAudio',
+                            'preferredcodec':'mp3',
+                            'preferredquality':'192',
+                        }],
+                    }
+        
+        with youtube_dl.YoutubeDL(ydl_opts) as ydl: 
+            ydl.download([url])
+            
+        # print(VidData['items'][0]['id']['videoId'])
+        
+        songDict = {
+            'embed': emb,
+            'ID': VidData['items'][0]['id']['videoId']
+        }
+        
+        return songDict
+        
+        
+    
     def mostPlayedTanks(tankStats:dict) -> dict:
         notInOrder = True
         if(len(tankStats)>2):
@@ -39,7 +98,7 @@ class methods:
 
 class MyClient(discord.Client):
     wot:WoT = None
-    music_queue = {}
+    music_queue = []
 
     #Starts the bot and outputs ready.
     async def on_ready(self):
@@ -176,41 +235,78 @@ class MyClient(discord.Client):
                 await message.channel.send(embed = msg)
 
             if(message.content[1:5].lower() == "play"): 
-                voiceChannel=message.author.voice.channel
-                voice = discord.utils.get(client.voice_clients, guild=message.guild)
-                if voice == None or not voice.is_connected():
-                    await voiceChannel.connect() 
-                    voice = discord.utils.get(client.voice_clients, guild=message.guild)
+                #joins VC if not already in a VC
+                try:
+                    voiceChannel=message.author.voice.channel
+                except:
+                    await message.channel.send(embed = Embed(title="Please Connect to a Voice Channel"), color = 0xff0000)
                 
                 arr = message.content.split(" ")
-                url = arr[1]
+                song = message.content[6:len(message.content)]
+                # print(song)
+                
+                searchData = methods.getVideo(song)
+                
+                await message.channel.send(embed = searchData['embed'])
+                
+                # url:str
+                # if("https://youtu.be/" in song or "https://www.youtube.com/watch?v=" in song):
+                    # url = song
+                # else:
+                    # YTAPIKey:str = "AIzaSyDC_3dXyozYOdY9_d7e6y3UJPUhPFExvXs"
+                    # Video = "https://youtube.googleapis.com/youtube/v3/search?part=snippet&order=relevance&q="+ song +"&safeSearch=none&key=" + YTAPIKey
+                    # VidData = requests.get(url = Video).json()
+                    # VID = VidData['items'][0]['id']['videoId']
+                    # url = "https://www.youtube.com/watch?v=" + VID
+                    
+                    # videoName = VidData['items'][0]['snippet']['title']
+                    
+                    # emb = Embed(title = "Playing:", description = videoName, color=0x00aa00, url = url)
+                    # emb.set_thumbnail(url = VidData['items'][0]['snippet']['thumbnails']['default']['url'])
+
+                    # await message.channel.send(embed = emb)
+                    # URLEmbedAudio = [url, emb, audio]
+                    # MyClient.music_queue.append(url)
+                    
+                # try:
+                #     if os.path.isfile("song.mp3"):
+                #         os.remove("song.mp3")
+                # except PermissionError:
+                #     print("no permissions")
+                #     message.channel.send("The bot host is an idiot and forgot to give the bot permissions to change the song")
+                    
+                # ydl_opts = {
+                #     'format':'bestaudio/best',
+                #     'postprocessors':[{
+                #         'key':'FFmpegExtractAudio',
+                #         'preferredcodec':'mp3',
+                #         'preferredquality':'192',
+                #     }],
+                # }
+                
+                # await message.channel.send("Downloading...")
+                
+                # with youtube_dl.YoutubeDL(ydl_opts) as ydl: 
+                #     ydl.download([url])
+                
+                # await message.channel.send("Extracting Audio File...")
                 
                 try:
-                    if os.path.isfile("song.mp3"):
-                        os.remove("song.mp3")
-                except PermissionError:
-                    print("no permissions")
-                    message.channel.send("The bot host is an idiot and forgot to give the bot permissions to change the song")
-                    
-                ydl_opts = {
-                    'format':'bestaudio/best',
-                    'postprocessors':[{
-                        'key':'FFmpegExtractAudio',
-                        'preferredcodec':'mp3',
-                        'preferredquality':'192',
-                    }],
-                }
+                    await voiceChannel.connect() 
+                except:
+                    pass
                 
-                message.channel.send("downloading...")
+                voice = discord.utils.get(client.voice_clients, guild=message.guild)
                 
-                with youtube_dl.YoutubeDL(ydl_opts) as ydl: 
-                    ydl.download([url])
-                    
-                    for file in os.listdir("./"):
-                        if file.endswith(".mp3"):
-                            os.rename(file, "song.mp3")  
-                            voice.play(discord.FFmpegPCMAudio("song.mp3")) 
-                            break 
+                for file in os.listdir("./"):
+                    if file.endswith(".mp3") and ("["+searchData['ID']+"]") in file:
+                        if(os.path.isfile("nowPlaying.mp3")):
+                            os.remove("nowPlaying.mp3")
+                            os.rename(file, "nowPlaying.mp3")
+                        else:
+                            os.rename(file, "nowPlaying.mp3")
+                        voice.play(discord.FFmpegPCMAudio("nowPlaying.mp3")) 
+                        break
                 
 client = MyClient() 
 #this client.run('token')
