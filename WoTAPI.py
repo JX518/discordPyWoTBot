@@ -1,11 +1,6 @@
 import requests
 import datetime
 
-# class main:
-#     def main():
-#         wot = WoTAPI("a5c99768df871fa42a0b10a16e8e89ca")
-#         wot.getPlayers()
-
 class WoTAPI:
     def __init__(self, AppID=None):
         if(AppID == None):
