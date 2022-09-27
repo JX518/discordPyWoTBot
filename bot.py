@@ -45,7 +45,7 @@ class methods:
         if("https://youtu.be/" in search or "https://www.youtube.com/watch?v=" in search):
             url = search
         else:
-            YTAPIKey:str = "AIzaSyDC_3dXyozYOdY9_d7e6y3UJPUhPFExvXs"
+            YTAPIKey:str = "YOUTUBE_API_KEY"
             Video = "https://youtube.googleapis.com/youtube/v3/search?part=snippet&order=relevance&q="+ search +"&safeSearch=none&key=" + YTAPIKey
             VidData = requests.get(url = Video).json()
             VID = VidData['items'][0]['id']['videoId']
@@ -105,7 +105,7 @@ class MyClient(discord.Client):
     async def on_ready(self):
         print('Logged on as', self.user) 
         #create a global WoT API variable
-        MyClient.wot:WoT = WoT("a5c99768df871fa42a0b10a16e8e89ca")
+        MyClient.wot:WoT = WoT("WOT_API_TOKEN")
 
     #detects messages from other authors
     async def on_message(self, message):
@@ -270,4 +270,4 @@ class MyClient(discord.Client):
                 
 client = MyClient() 
 #this client.run('token')
-client.run('ODI2MjU3MTAwMzU0NDg2MzAz.YGJ14w._QdDCVnpyV8y_y0yiWeuCt1SJek') 
+client.run('DISCORD_TOKEN_GOES_HERE') 
